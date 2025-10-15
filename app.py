@@ -1,45 +1,42 @@
 import streamlit as st
 import json
-import os
 
 st.set_page_config(page_title="Presupuestos Coches de Bodas Aranjuez", page_icon="💒", layout="centered")
 
-# Cargar configuración de precios desde JSON
-CONFIG_PATH = "config_precios.json"
-
-if not os.path.exists(CONFIG_PATH):
-    st.error("❌ No se encontró el archivo 'config_precios.json'. Añádelo localmente (está ignorado en .gitignore).")
+# --- Cargar configuración desde Streamlit Secrets ---
+if "precios" not in st.secrets:
+    st.error("❌ No se ha configurado el JSON de precios en Streamlit Secrets.\n\nVe a Settings → Secrets e introduce los datos.")
     st.stop()
 
-with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-    precios = json.load(f)
+try:
+    precios = {
+        "boda_completa": json.loads(st.secrets["precios"]["boda_completa"]),
+        "boda_civil": json.loads(st.secrets["precios"]["boda_civil"]),
+        "suplemento_distancia": json.loads(st.secrets["precios"]["suplemento_distancia"])
+    }
+except Exception as e:
+    st.error(f"Error al leer los precios desde los secrets: {e}")
+    st.stop()
 
+# --- Interfaz de usuario ---
 st.title("💍 Generador de Presupuestos - Coches de Bodas Aranjuez")
 st.write("Completa la información para calcular el presupuesto del coche de boda:")
 
-# Tipo de boda
 tipo_boda = st.radio("Tipo de boda:", ["Boda completa", "Boda civil"])
-
-# Coche
 tipo_coche = st.selectbox("Coche:", ["Rolls Royce", "Mercedes", "Bentley"])
-
-# Adornos
 adornos = st.checkbox("Incluir adornos (+20€)", value=True)
 
-# Recogida del novio (solo boda completa)
 recogida_novio = False
 if tipo_boda == "Boda completa":
     recogida_novio = st.checkbox("Recoger también al novio (+20€)", value=False)
 
-# Distancia
 distancia = st.number_input("Distancia total (km):", min_value=0.0, step=1.0, value=10.0)
 
-# Duración (solo bodas civiles)
 duracion_horas = 1.0
 if tipo_boda == "Boda civil":
     duracion_horas = st.number_input("Duración total (horas):", min_value=1.0, step=0.5, value=1.0)
 
-# --- Cálculo del precio ---
+# --- Cálculo del presupuesto ---
 total = 0
 
 if tipo_boda == "Boda completa":
@@ -49,6 +46,7 @@ if tipo_boda == "Boda completa":
         total += precios["boda_completa"]["adornos"]
     if recogida_novio:
         total += precios["boda_completa"]["recogida_novio"]
+
 else:
     base = precios["boda_civil"][tipo_coche.lower().replace(" ", "_")]
     total += base
